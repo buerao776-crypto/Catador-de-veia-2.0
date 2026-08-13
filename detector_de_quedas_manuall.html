@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Detector de Quedas</title>
+<style>
+  :root{
+    --bg:#0b111d;
+    --card:#141c2e;
+    --card-border:#26314a;
+    --field-bg:#0f1729;
+    --field-border:#2b3853;
+    --text:#eef1f7;
+    --muted:#9aa7bd;
+    --accent:#3b6bf0;
+    --accent-hover:#2f5adf;
+    --ok-bg:#0f2a1c;
+    --ok-border:#1f5c3a;
+    --ok-text:#5fe08a;
+    --danger-bg:#341116;
+    --danger-border:#7a2530;
+    --danger-text:#ff6b7a;
+    --warn:#e8b93b;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    padding:24px 20px 60px;
+  }
+  .header{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    margin-bottom:28px;
+  }
+  .header .icon{font-size:34px;line-height:1;}
+  .header h1{font-size:26px;margin:0;font-weight:700;}
+  .subtitle{color:var(--muted);font-size:15px;margin:6px 0 0;}
+  .card{
+    background:var(--card);
+    border:1px solid var(--card-border);
+    border-radius:16px;
+    padding:22px;
+    margin-bottom:20px;
+  }
+  .card h2{font-size:18px;margin:0 0 18px;font-weight:700;}
+  .grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px 12px;
+  }
+  .field label{
+    display:block;
+    font-size:13px;
+    color:var(--muted);
+    margin-bottom:6px;
+  }
+  .field input{
+    width:100%;
+    background:var(--field-bg);
+    border:1px solid var(--field-border);
+    border-radius:10px;
+    padding:12px 14px;
+    color:var(--text);
+    font-size:16px;
+    outline:none;
+  }
+  .field input:focus{border-color:var(--accent);}
+  .btn{
+    width:100%;
+    margin-top:20px;
+    padding:16px;
+    background:var(--accent);
+    border:none;
+    border-radius:12px;
+    color:#fff;
+    font-size:16px;
+    font-weight:700;
+    letter-spacing:.03em;
+    cursor:pointer;
+  }
+  .btn:active{background:var(--accent-hover);}
+  .result-card{
+    background:var(--ok-bg);
+    border:1px solid var(--ok-border);
+    border-radius:16px;
+    padding:26px 22px;
+    text-align:center;
+    transition:background .2s,border-color .2s;
+  }
+  .result-card.danger{background:var(--danger-bg);border-color:var(--danger-border);}
+  .result-card h2{margin:0 0 14px;font-size:18px;font-weight:700;}
+  .result-line{height:2px;width:56px;background:var(--muted);opacity:.4;margin:0 auto 18px;}
+  .result-status{
+    font-size:22px;
+    font-weight:800;
+    color:var(--muted);
+    margin-bottom:6px;
+  }
+  .result-card.ok .result-status{color:var(--ok-text);}
+  .result-card.danger .result-status{color:var(--danger-text);}
+  .result-sub{font-size:14px;color:var(--muted);}
+  .conf-bar{
+    margin-top:18px;
+    height:8px;
+    background:#0006;
+    border-radius:99px;
+    overflow:hidden;
+  }
+  .conf-fill{height:100%;width:0%;background:var(--ok-text);transition:width .4s ease;}
+  .result-card.danger .conf-fill{background:var(--danger-text);}
+  .conf-label{margin-top:8px;font-size:13px;color:var(--muted);}
+  .breakdown{
+    margin-top:20px;
+    text-align:left;
+    display:none;
+  }
+  .breakdown.show{display:block;}
+  .breakdown-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-size:13px;
+    color:var(--muted);
+    padding:7px 0;
+    border-bottom:1px solid #ffffff0f;
+  }
+  .breakdown-row:last-child{border-bottom:none;}
+  .breakdown-row .val{color:var(--text);font-variant-numeric:tabular-nums;}
+  .info p{color:var(--muted);font-size:14.5px;line-height:1.55;margin:0 0 18px;}
+  table{width:100%;border-collapse:collapse;font-size:14.5px;}
+  th{text-align:left;color:var(--text);font-weight:700;padding-bottom:10px;border-bottom:1px solid var(--card-border);}
+  td{padding:10px 0;color:var(--muted);border-bottom:1px solid #ffffff0f;}
+  td:last-child, th:last-child{text-align:right;}
+  .pill{
+    display:inline-block;
+    padding:2px 10px;
+    border-radius:99px;
+    font-size:12px;
+    font-weight:700;
+  }
+  .pill.alta{background:#3b6bf033;color:#8fb0ff;}
+  .pill.media{background:#e8b93b26;color:var(--warn);}
+  .disclaimer{
+    margin-top:18px;
+    font-size:13px;
+    color:var(--warn);
+    line-height:1.5;
+    display:flex;
+    gap:8px;
+  }
+  .result-answer{
+    font-size:15px;
+    font-weight:700;
+    margin:14px 0 2px;
+    padding:10px 14px;
+    border-radius:10px;
+    background:#00000026;
+  }
+  .result-card.ok .result-answer{color:var(--ok-text);}
+  .result-card.danger .result-answer{color:var(--danger-text);}
+  .chart-row{margin-bottom:16px;}
+  .chart-row:last-child{margin-bottom:0;}
+  .chart-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    font-size:13px;
+    margin-bottom:6px;
+  }
+  .chart-top .label{color:var(--text);font-weight:600;}
+  .chart-top .value{color:var(--muted);font-variant-numeric:tabular-nums;}
+  .chart-track{
+    position:relative;
+    height:10px;
+    border-radius:99px;
+    background:linear-gradient(90deg, var(--ok-text), var(--warn) 55%, var(--danger-text));
+    opacity:.28;
+  }
+  .chart-fill-track{
+    position:relative;
+    height:10px;
+    margin-top:-10px;
+    border-radius:99px;
+    overflow:hidden;
+    pointer-events:none;
+  }
+  .chart-marker{
+    position:absolute;
+    top:-4px;
+    width:4px;
+    height:18px;
+    border-radius:3px;
+    background:#fff;
+    box-shadow:0 0 0 3px #0b111d;
+    transform:translateX(-2px);
+    transition:left .25s ease;
+  }
+  .chart-marker.empty{background:#3a4864;}
+  .chart-endpoints{
+    display:flex;
+    justify-content:space-between;
+    font-size:11px;
+    color:var(--muted);
+    margin-top:5px;
+  }
+  .sensor-card{
+    background:var(--card);
+    border:1px solid var(--card-border);
+    border-radius:16px;
+    padding:22px;
+    margin-bottom:20px;
+  }
+  .sensor-top{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    margin-bottom:6px;
+  }
+  .sensor-top h2{font-size:18px;margin:0;font-weight:700;}
+  .sensor-status{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    font-size:13px;
+    color:var(--muted);
+    margin-bottom:16px;
+  }
+  .dot{
+    width:9px;height:9px;border-radius:50%;
+    background:var(--muted);
+    flex-shrink:0;
+  }
+  .sensor-status.live .dot{
+    background:var(--ok-text);
+    box-shadow:0 0 0 0 rgba(95,224,138,.6);
+    animation:pulse 1.4s infinite;
+  }
+  @keyframes pulse{
+    0%{box-shadow:0 0 0 0 rgba(95,224,138,.55);}
+    70%{box-shadow:0 0 0 9px rgba(95,224,138,0);}
+    100%{box-shadow:0 0 0 0 rgba(95,224,138,0);}
+  }
+  .sensor-btn{
+    width:100%;
+    padding:16px;
+    border:none;
+    border-radius:12px;
+    color:#fff;
+    font-size:16px;
+    font-weight:700;
+    letter-spacing:.03em;
+    cursor:pointer;
+    background:var(--ok-border);
+  }
+  .sensor-btn.stop{background:var(--danger-border);}
+  .sensor-note{
+    margin-top:14px;
+    font-size:12.5px;
+    color:var(--muted);
+    line-height:1.5;
+  }
+  .sensor-note.warn{color:var(--warn);}
+  .divider-or{
+    text-align:center;
+    color:var(--muted);
+    font-size:12.5px;
+    margin:-6px 0 20px;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+  }
+  .emergency-field{margin-top:16px;}
+  .emergency-field label{
+    display:block;
+    font-size:13px;
+    color:var(--muted);
+    margin-bottom:6px;
+  }
+  .emergency-field input{
+    width:100%;
+    background:var(--field-bg);
+    border:1px solid var(--field-border);
+    border-radius:10px;
+    padding:12px 14px;
+    color:var(--text);
+    font-size:16px;
+    outline:none;
+  }
+  .alert-overlay{
+    position:fixed;
+    inset:0;
+    z-index:9999;
+    display:none;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:32px 24px;
+    background:linear-gradient(160deg,#4a0d14,#200308);
+    animation:alertFlash 1s infinite;
+  }
+  @keyframes alertFlash{
+    0%,100%{background:linear-gradient(160deg,#4a0d14,#200308);}
+    50%{background:linear-gradient(160deg,#7a1420,#3a0810);}
+  }
+  .alert-icon{font-size:52px;margin-bottom:6px;}
+  .alert-title{font-size:26px;font-weight:800;color:#fff;margin-bottom:10px;}
+  .alert-count{font-size:64px;font-weight:800;color:#fff;line-height:1;margin:10px 0;font-variant-numeric:tabular-nums;}
+  .alert-sub{font-size:15px;color:#ffd7db;margin-bottom:28px;line-height:1.5;max-width:320px;}
+  .alert-cancel-btn{
+    width:100%;
+    max-width:320px;
+    padding:18px;
+    border:none;
+    border-radius:14px;
+    background:var(--ok-text);
+    color:#0b2413;
+    font-size:18px;
+    font-weight:800;
+    letter-spacing:.02em;
+    cursor:pointer;
+    margin-bottom:14px;
+  }
+  .alert-call-btn{
+    width:100%;
+    max-width:320px;
+    padding:16px;
+    border:2px solid #fff;
+    border-radius:14px;
+    background:transparent;
+    color:#fff;
+    font-size:16px;
+    font-weight:700;
+    text-decoration:none;
+    display:none;
+  }
+</style>
+</head>
+<body>
+
+  <div class="alert-overlay" id="alertOverlay">
+    <div class="alert-icon">⚠️</div>
+    <div class="alert-title">POSSÍVEL QUEDA DETECTADA</div>
+    <div class="alert-count" id="alertCountdown">15</div>
+    <div class="alert-sub" id="alertSub">Se estiver tudo bem, toque em "Estou bem" abaixo.</div>
+    <button class="alert-cancel-btn" onclick="cancelarAlerta()">✓ ESTOU BEM — CANCELAR</button>
+    <a class="alert-call-btn" id="callBtn" href="tel:">📞 LIGAR PARA CONTATO DE EMERGÊNCIA</a>
+  </div>
+
+  <div class="header">
+    <div class="icon">🤖</div>
+    <div>
+      <h1>Detector de Quedas</h1>
+      <p class="subtitle">Classificação manual de uma janela de sensores</p>
+    </div>
+  </div>
+
+  <div class="sensor-card">
+    <div class="sensor-top"><h2>Captura automática pelo celular</h2></div>
+    <div class="sensor-status" id="sensorStatus"><span class="dot"></span><span id="sensorStatusText">Sensores parados</span></div>
+    <button class="sensor-btn" id="sensorBtn" onclick="toggleSensores()">ATIVAR SENSORES DO CELULAR</button>
+    <div class="sensor-note" id="sensorNote">Usa o acelerômetro e o giroscópio do próprio celular para preencher os campos abaixo e analisar sozinho, em janelas de ~2s.</div>
+    <div class="sensor-note warn">⚠️ Só funciona em página aberta com HTTPS (não em arquivo aberto direto) e com a tela ligada. Não substitui um app nativo ou wearable dedicado para uso real.</div>
+    <div class="emergency-field">
+      <label>Contato de emergência (opcional)</label>
+      <input type="tel" id="telEmergencia" placeholder="ex: 31999999999">
+    </div>
+  </div>
+
+  <div class="divider-or">ou insira manualmente</div>
+
+  <div class="card">
+    <h2>Dados da janela</h2>
+    <div class="grid">
+      <div class="field">
+        <label>acc_max</label>
+        <input type="text" inputmode="decimal" id="acc_max" placeholder="ex: 1,97">
+      </div>
+      <div class="field">
+        <label>acc_min</label>
+        <input type="text" inputmode="decimal" id="acc_min" placeholder="ex: 0,60">
+      </div>
+      <div class="field">
+        <label>acc_media</label>
+        <input type="text" inputmode="decimal" id="acc_media" placeholder="ex: 1,20">
+      </div>
+      <div class="field">
+        <label>acc_desvio</label>
+        <input type="text" inputmode="decimal" id="acc_desvio" placeholder="ex: 0,27">
+      </div>
+      <div class="field">
+        <label>acc_amplitude</label>
+        <input type="text" inputmode="decimal" id="acc_amplitude" placeholder="ex: 1,37">
+      </div>
+      <div class="field">
+        <label>acc_max_horizontal</label>
+        <input type="text" inputmode="decimal" id="acc_max_horizontal" placeholder="ex: 1,18">
+      </div>
+      <div class="field">
+        <label>giro_max</label>
+        <input type="text" inputmode="decimal" id="giro_max" placeholder="ex: 130,8">
+      </div>
+      <div class="field">
+        <label>giro_media</label>
+        <input type="text" inputmode="decimal" id="giro_media" placeholder="ex: 37,8">
+      </div>
+      <div class="field">
+        <label>giro_desvio</label>
+        <input type="text" inputmode="decimal" id="giro_desvio" placeholder="ex: 24,8">
+      </div>
+    </div>
+    <button class="btn" onclick="analisar()">ANALISAR</button>
+  </div>
+
+  <div class="card">
+    <h2>Gráfico dos sensores</h2>
+    <div id="chart"></div>
+  </div>
+
+  <div class="result-card" id="resultCard">
+    <h2>Resultado</h2>
+    <div class="result-line"></div>
+    <div class="result-status" id="resultStatus">Insira os dados e clique em analisar.</div>
+    <div class="result-sub" id="resultSub"></div>
+    <div class="result-answer" id="resultAnswer" style="display:none;"></div>
+    <div class="conf-bar" id="confBar" style="display:none;">
+      <div class="conf-fill" id="confFill"></div>
+    </div>
+    <div class="conf-label" id="confLabel"></div>
+    <div class="breakdown" id="breakdown"></div>
+  </div>
+
+  <div class="card info">
+    <h2>Como a análise funciona</h2>
+    <p>
+      O protótipo compara os valores informados com os padrões médios observados
+      para janelas <strong>sem queda</strong> e <strong>com queda</strong>. Cada
+      característica é convertida numa posição entre esses dois padrões e, quanto
+      mais próxima do padrão de queda, maior o peso que ela adiciona ao resultado.
+      Características de importância "Alta" pesam o dobro das de importância "Média".
+    </p>
+    <table>
+      <tr><th>Característica</th><th>Sem queda</th><th>Queda</th><th>Peso</th></tr>
+      <tr><td>acc_max</td><td>1,97</td><td>6,34</td><td><span class="pill alta">Alta</span></td></tr>
+      <tr><td>acc_min</td><td>0,60</td><td>0,28</td><td><span class="pill media">Média</span></td></tr>
+      <tr><td>acc_desvio</td><td>0,27</td><td>0,57</td><td><span class="pill media">Média</span></td></tr>
+      <tr><td>acc_amplitude</td><td>1,37</td><td>6,05</td><td><span class="pill alta">Alta</span></td></tr>
+      <tr><td>acc_max_horizontal</td><td>1,18</td><td>5,13</td><td><span class="pill alta">Alta</span></td></tr>
+      <tr><td>giro_max</td><td>130,8</td><td>392,9</td><td><span class="pill alta">Alta</span></td></tr>
+      <tr><td>giro_media</td><td>37,8</td><td>60,7</td><td><span class="pill media">Média</span></td></tr>
+      <tr><td>giro_desvio</td><td>24,8</td><td>67,4</td><td><span class="pill alta">Alta</span></td></tr>
+    </table>
+    <div class="disclaimer">⚠️ <span>Esta versão é uma demonstração baseada em regras simples de comparação com médias de referência. O resultado ainda não é a saída de um modelo de Machine Learning treinado — não deve ser usado como único meio de decisão em situações reais.</span></div>
+  </div>
+
+<script>
+const REF = {
+  acc_max:            { semQueda: 1.97,  queda: 6.34,  peso: 2, label: "Aceleração máxima" },
+  acc_min:             { semQueda: 0.60,  queda: 0.28,  peso: 1, label: "Aceleração mínima" },
+  acc_desvio:          { semQueda: 0.27,  queda: 0.57,  peso: 1, label: "Desvio da aceleração" },
+  acc_amplitude:       { semQueda: 1.37,  queda: 6.05,  peso: 2, label: "Amplitude da aceleração" },
+  acc_max_horizontal:  { semQueda: 1.18,  queda: 5.13,  peso: 2, label: "Acc. horizontal máxima" },
+  giro_max:            { semQueda: 130.8, queda: 392.9, peso: 2, label: "Giro máximo" },
+  giro_media:          { semQueda: 37.8,  queda: 60.7,  peso: 1, label: "Giro médio" },
+  giro_desvio:         { semQueda: 24.8,  queda: 67.4,  peso: 2, label: "Desvio do giro" }
+};
+
+function parseNum(str){
+  if(!str) return null;
+  const n = parseFloat(str.replace(',', '.'));
+  return isNaN(n) ? null : n;
+}
+
+function clip01(x){ return Math.max(0, Math.min(1, x)); }
+
+function renderChart(){
+  const chart = document.getElementById('chart');
+  chart.innerHTML = Object.keys(REF).map(key => {
+    const ref = REF[key];
+    const raw = document.getElementById(key).value;
+    const valor = parseNum(raw);
+    const temValor = valor !== null;
+    const posicao = temValor ? clip01((valor - ref.semQueda) / (ref.queda - ref.semQueda)) : null;
+    const leftPct = temValor ? (posicao * 100).toFixed(1) : null;
+
+    return `
+      <div class="chart-row">
+        <div class="chart-top">
+          <span class="label">${ref.label}</span>
+          <span class="value">${temValor ? valor : '—'}</span>
+        </div>
+        <div class="chart-track"></div>
+        <div class="chart-fill-track">
+          ${temValor ? `<div class="chart-marker" style="left:${leftPct}%;"></div>` : `<div class="chart-marker empty" style="left:0%;"></div>`}
+        </div>
+        <div class="chart-endpoints">
+          <span>sem queda · ${ref.semQueda}</span>
+          <span>queda · ${ref.queda}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function analisar(){
+  const resultCard = document.getElementById('resultCard');
+  const statusEl = document.getElementById('resultStatus');
+  const subEl = document.getElementById('resultSub');
+  const answerEl = document.getElementById('resultAnswer');
+  const confBar = document.getElementById('confBar');
+  const confFill = document.getElementById('confFill');
+  const confLabel = document.getElementById('confLabel');
+  const breakdown = document.getElementById('breakdown');
+
+  renderChart();
+
+  let pesoTotal = 0;
+  let scoreTotal = 0;
+  let rows = [];
+  let camposPreenchidos = 0;
+
+  for(const key in REF){
+    const ref = REF[key];
+    const raw = document.getElementById(key).value;
+    const valor = parseNum(raw);
+    if(valor === null) continue;
+
+    camposPreenchidos++;
+    const range = ref.queda - ref.semQueda;
+    const posicao = clip01((valor - ref.semQueda) / range);
+    scoreTotal += posicao * ref.peso;
+    pesoTotal += ref.peso;
+
+    rows.push({
+      label: ref.label,
+      valor,
+      posicao
+    });
+  }
+
+  if(camposPreenchidos === 0){
+    statusEl.textContent = "Insira os dados e clique em analisar.";
+    subEl.textContent = "";
+    resultCard.className = "result-card";
+    confBar.style.display = "none";
+    answerEl.style.display = "none";
+    breakdown.classList.remove('show');
+    return { isQueda: false, pct: 0 };
+  }
+
+  const probQueda = scoreTotal / pesoTotal;
+  const pct = Math.round(probQueda * 100);
+  const isQueda = probQueda >= 0.5;
+
+  resultCard.className = "result-card " + (isQueda ? "danger" : "ok");
+  statusEl.textContent = isQueda ? "⚠ QUEDA DETECTADA" : "✓ SEM QUEDA";
+  subEl.textContent = camposPreenchidos < 8
+    ? `Baseado em ${camposPreenchidos} de 8 características preenchidas`
+    : "Baseado nas 8 características da janela";
+
+  answerEl.style.display = "block";
+  answerEl.textContent = isQueda
+    ? "Resposta: SIM, os dados indicam que houve uma queda."
+    : "Resposta: NÃO, os dados não indicam uma queda.";
+
+  confBar.style.display = "block";
+  confFill.style.width = pct + "%";
+  confLabel.textContent = `Semelhança com padrão de queda: ${pct}%`;
+
+  rows.sort((a,b) => b.posicao - a.posicao);
+  breakdown.innerHTML = rows.map(r => `
+    <div class="breakdown-row">
+      <span>${r.label}</span>
+      <span class="val">${r.valor} · ${Math.round(r.posicao*100)}%</span>
+    </div>
+  `).join('');
+  breakdown.classList.add('show');
+
+  return { isQueda, pct };
+}
+
+document.querySelectorAll('.field input').forEach(input => {
+  input.addEventListener('input', renderChart);
+});
+renderChart();
+
+// ---- Captura automática via sensores do celular ----
+let monitorando = false;
+let bufferAmostras = [];
+const JANELA_MS = 2000;
+const INTERVALO_ANALISE_MS = 500;
+let intervaloAnalise = null;
+
+function onMotion(event){
+  const acc = event.accelerationIncludingGravity || event.acceleration;
+  const giro = event.rotationRate;
+  if(!acc || acc.x === null) return;
+
+  const ax = acc.x || 0, ay = acc.y || 0, az = acc.z || 0;
+  const accMagG = Math.sqrt(ax*ax + ay*ay + az*az) / 9.81;
+  const accHorizG = Math.sqrt(ax*ax + ay*ay) / 9.81;
+
+  let giroMag = 0;
+  if(giro && giro.alpha !== null){
+    const gx = giro.alpha || 0, gy = giro.beta || 0, gz = giro.gamma || 0;
+    giroMag = Math.sqrt(gx*gx + gy*gy + gz*gz);
+  }
+
+  bufferAmostras.push({ t: Date.now(), accMagG, accHorizG, giroMag });
+  const limite = Date.now() - JANELA_MS;
+  bufferAmostras = bufferAmostras.filter(a => a.t >= limite);
+}
+
+function media(arr){ return arr.reduce((s,v) => s+v, 0) / arr.length; }
+function desvio(arr, m){ return Math.sqrt(media(arr.map(v => (v-m)**2))); }
+
+function processarJanela(){
+  if(bufferAmostras.length < 5) return;
+
+  const accs = bufferAmostras.map(a => a.accMagG);
+  const horiz = bufferAmostras.map(a => a.accHorizG);
+  const giros = bufferAmostras.map(a => a.giroMag);
+
+  const accMax = Math.max(...accs);
+  const accMin = Math.min(...accs);
+  const accMedia = media(accs);
+  const accDesvio = desvio(accs, accMedia);
+  const accAmplitude = accMax - accMin;
+  const accMaxHorizontal = Math.max(...horiz);
+  const giroMax = Math.max(...giros);
+  const giroMedia = media(giros);
+  const giroDesvio = desvio(giros, giroMedia);
+
+  document.getElementById('acc_max').value = accMax.toFixed(2);
+  document.getElementById('acc_min').value = accMin.toFixed(2);
+  document.getElementById('acc_media').value = accMedia.toFixed(2);
+  document.getElementById('acc_desvio').value = accDesvio.toFixed(2);
+  document.getElementById('acc_amplitude').value = accAmplitude.toFixed(2);
+  document.getElementById('acc_max_horizontal').value = accMaxHorizontal.toFixed(2);
+  document.getElementById('giro_max').value = giroMax.toFixed(1);
+  document.getElementById('giro_media').value = giroMedia.toFixed(1);
+  document.getElementById('giro_desvio').value = giroDesvio.toFixed(1);
+
+  const resultado = analisar();
+  avaliarSustentacaoDeQueda(resultado.isQueda);
+}
+
+// ---- Confirmação de queda sustentada (3s) e alerta ----
+const TEMPO_CONFIRMACAO_MS = 3000;
+let quedaDesde = null;
+let alertaAtivo = false;
+let contagemRestante = 15;
+let contagemInterval = null;
+let alarmeInterval = null;
+let audioCtx = null;
+
+function avaliarSustentacaoDeQueda(isQueda){
+  if(alertaAtivo) return;
+
+  if(isQueda){
+    if(quedaDesde === null) quedaDesde = Date.now();
+    if(Date.now() - quedaDesde >= TEMPO_CONFIRMACAO_MS){
+      dispararAlerta();
+    }
+  } else {
+    quedaDesde = null;
+  }
+}
+
+function beep(){
+  try{
+    if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'square';
+    osc.frequency.value = 880;
+    gain.gain.value = 0.18;
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    setTimeout(() => osc.stop(), 220);
+  }catch(e){}
+}
+
+function dispararAlerta(){
+  alertaAtivo = true;
+  contagemRestante = 15;
+
+  const overlay = document.getElementById('alertOverlay');
+  const sub = document.getElementById('alertSub');
+  const callBtn = document.getElementById('callBtn');
+  const telefone = (document.getElementById('telEmergencia').value || '').replace(/\D/g,'');
+
+  sub.textContent = 'Se estiver tudo bem, toque em "Estou bem" abaixo.';
+  callBtn.style.display = 'none';
+  if(telefone) callBtn.href = 'tel:' + telefone;
+
+  overlay.style.display = 'flex';
+  document.getElementById('alertCountdown').textContent = contagemRestante;
+
+  beep();
+  alarmeInterval = setInterval(beep, 700);
+  if(navigator.vibrate) navigator.vibrate([400,150,400,150,400]);
+  if('Notification' in window && Notification.permission === 'granted'){
+    try{ new Notification('Possível queda detectada', { body: 'Abra o app para verificar.' }); }catch(e){}
+  }
+
+  contagemInterval = setInterval(() => {
+    contagemRestante--;
+    document.getElementById('alertCountdown').textContent = Math.max(contagemRestante, 0);
+    if(navigator.vibrate) navigator.vibrate(300);
+    if(contagemRestante <= 0){
+      clearInterval(contagemInterval);
+      sub.textContent = telefone
+        ? 'Alerta não confirmado. Toque no botão abaixo para ligar para o contato de emergência.'
+        : 'Alerta não confirmado. Nenhum contato de emergência foi configurado.';
+      if(telefone) callBtn.style.display = 'block';
+    }
+  }, 1000);
+}
+
+function cancelarAlerta(){
+  alertaAtivo = false;
+  quedaDesde = null;
+  clearInterval(contagemInterval);
+  clearInterval(alarmeInterval);
+  document.getElementById('alertOverlay').style.display = 'none';
+  document.getElementById('callBtn').style.display = 'none';
+}
+
+async function toggleSensores(){
+  const btn = document.getElementById('sensorBtn');
+  const statusEl = document.getElementById('sensorStatus');
+  const statusText = document.getElementById('sensorStatusText');
+  const note = document.getElementById('sensorNote');
+
+  if(monitorando){
+    window.removeEventListener('devicemotion', onMotion);
+    clearInterval(intervaloAnalise);
+    monitorando = false;
+    btn.textContent = "ATIVAR SENSORES DO CELULAR";
+    btn.classList.remove('stop');
+    statusEl.classList.remove('live');
+    statusText.textContent = "Sensores parados";
+    cancelarAlerta();
+    return;
+  }
+
+  if(window.isSecureContext === false){
+    note.textContent = "Esta página precisa estar em HTTPS para acessar os sensores. Hospede o arquivo (ex: GitHub Pages, Netlify) e abra pelo link.";
+    return;
+  }
+  if(typeof DeviceMotionEvent === 'undefined'){
+    note.textContent = "Este navegador não expõe acelerômetro/giroscópio via JavaScript.";
+    return;
+  }
+
+  if(typeof DeviceMotionEvent.requestPermission === 'function'){
+    try{
+      const resp = await DeviceMotionEvent.requestPermission();
+      if(resp !== 'granted'){
+        note.textContent = "Permissão de movimento negada. Ative em Ajustes > Safari > Movimento e Orientação.";
+        return;
+      }
+    }catch(e){
+      note.textContent = "Não foi possível pedir permissão dos sensores.";
+      return;
+    }
+  }
+
+  bufferAmostras = [];
+  window.addEventListener('devicemotion', onMotion);
+  intervaloAnalise = setInterval(processarJanela, INTERVALO_ANALISE_MS);
+  monitorando = true;
+  btn.textContent = "PARAR SENSORES";
+  btn.classList.add('stop');
+  statusEl.classList.add('live');
+  statusText.textContent = "Monitorando em tempo real…";
+  note.textContent = "Os campos abaixo são preenchidos e reanalisados automaticamente a cada meio segundo.";
+
+  if('Notification' in window && Notification.permission === 'default'){
+    try{ Notification.requestPermission(); }catch(e){}
+  }
+}
+</script>
+
+</body>
+</html>
